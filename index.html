@@ -65,7 +65,7 @@ function render(){
  const status=chosen?(missionStatuses.get(String(selectionIds.get(i)))||(done?'pending':'not_reported')):'not_reported';
  const label={verified:'✓ VERIFIED',rejected:'✕ REJECTED',pending:'◷ PENDING REVIEW',not_reported:'✓ SELECTED'}[status];
  const locked=status==='verified'||status==='rejected';
- return `<article class="mission ${chosen?'selected':''} ${chosen&&done?'done':''}"><div class="pill">${chosen?label:'AVAILABLE'}</div><h3>${emoji} ${title}</h3><p>${description}</p><div class="actions"><button data-action="select" data-id="${i}" ${busy||!loaded||(!chosen&&selected.length>=5)?'disabled':''}>${chosen?'Remove':'Choose mission'}</button>${chosen?`<button data-action="complete" data-id="${i}" ${busy||locked?'disabled':''}>${locked?(status==='verified'?'Verified':'Rejected'):(done?'Undo report':'Report completed')}</button>`:''}</div></article>`}).join('');
+ return `<article class="mission ${chosen?'selected':''} ${chosen&&done?'done':''}"><div class="pill">${chosen?label:'AVAILABLE'}</div><h3>${emoji} ${title}</h3><p>${description}</p><div class="actions"><button data-action="select" data-id="${i}" ${busy||!loaded||locked||(!chosen&&selected.length>=5)?'disabled':''}>${chosen?(locked?'Locked · reviewed':'Remove'):'Choose mission'}</button>${chosen?`<button data-action="complete" data-id="${i}" ${busy||locked?'disabled':''}>${locked?(status==='verified'?'Verified':'Rejected'):(done?'Undo report':'Report completed')}</button>`:''}</div></article>`}).join('');
  
 }
 function showCelebration(){el('overlay').classList.add('show');el('close').focus()}
@@ -98,18 +98,19 @@ el('missions').addEventListener('click',async e=>{
      ?await client.from('mission_reports').delete().eq('selection_id',selectionId)
      :await client.from('mission_reports').insert({selection_id:selectionId});
    busy=false;
-   if(result.error){message('Report failed: '+result.error.message);render();return}
+   if(result.error){message('Report failed: '+result.error.message);await loadSelections();return}
    completed=undo?completed.filter(x=>x!==i):[...completed,i];missionStatuses.set(String(selectionId),undo?'not_reported':'pending');
    message(undo?'Completion report removed ✓':'Completion reported ✓ (not verified)');render();return;
  }
  if(b.dataset.action!=='select')return;
+ if(['verified','rejected'].includes(missionStatuses.get(String(selectionIds.get(i)))))return;
  const removing=selected.includes(i);if(!removing&&selected.length>=5)return;
  busy=true;render();message('Saving your selection…');
  let result;
  if(removing){result=await client.from('weekly_selections').delete().eq('discord_user_id',discordId).eq('week_start',week).eq('mission_id',library[i][3]);}
  else{result=await client.from('weekly_selections').insert({discord_user_id:discordId,week_start:week,mission_id:library[i][3]}).select('id').single();}
  busy=false;
- if(result.error){message('Save failed: '+result.error.message);render();return}
+ if(result.error){message('Save failed: '+result.error.message);await loadSelections();return}
  if(removing){missionStatuses.delete(String(selectionIds.get(i)));selected=selected.filter(x=>x!==i);completed=completed.filter(x=>x!==i);selectionIds.delete(i)}
  else{selected.push(i);selectionIds.set(i,result.data.id);missionStatuses.set(String(result.data.id),'not_reported')}
  message('Saved to your Pride account ✓');render();
