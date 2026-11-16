@@ -1,3 +1,4 @@
+```
 <!doctype html>
 <html lang="en">
 <head>
@@ -11,6 +12,7 @@
 <header><div class="eyebrow">THE LIONESS DEN</div><h1>👑 Den Missions 2.0</h1><p>Choose five weekly missions. Play your way. Celebrate your progress.</p></header>
 <section class="panel" id="authPanel" aria-label="Discord sign in"><div class="top" style="flex-wrap:wrap"><div><strong>🔐 Your Pride account</strong><p class="note" id="authStatus" aria-live="polite">Checking Discord sign-in…</p></div><div class="actions"><button class="primary" id="loginDiscord" hidden>Sign in with Discord</button><button id="logoutDiscord" hidden>Sign out</button></div></div><p class="note" id="authNote">Weekly selections save to your account after sign-in. Members can report mission completion. Reports are not verified and do not award Discord roles.</p></section>
 <section class="panel"><div class="top"><strong>Your weekly progress</strong><span class="count" id="progress">0 / 5</span></div><div class="bar" aria-label="Mission progress"><div class="fill" id="fill"></div></div><p class="note">Progress shows your submitted completion reports (unverified). Discord verification and role awards are not connected yet.</p><button id="reset">How reporting works</button></section>
+<section class="panel" aria-label="Verified Royal Achiever progress"><div class="top"><strong>👑 Verified Royal Achiever progress</strong><span class="count" id="verifiedProgress">0 / 5</span></div><div class="bar" aria-label="Verified progress"><div class="fill" id="verifiedFill"></div></div><p class="note" id="verifiedStatus" aria-live="polite">Sign in to view administrator-approved or bot-verified progress. Reports alone do not count.</p></section>
 <section class="panel"><p class="note" id="saveStatus" aria-live="polite">Sign in to save weekly selections.</p><div class="top"><h2>🎮 Choose your missions</h2><span class="count" id="selectedCount">0 / 5 selected</span></div><div class="grid" id="missions"></div></section>
 <section class="panel"><h2>🏆 Your reward</h2><p>The Royal Crown animation is a preview only. Reporting five missions does not earn the Royal Achiever role; verification is required.</p><button class="primary" id="preview">Preview crown celebration ✨</button></section>
 <footer>Your Squad. Your Vibe. Your Place in the Pride. 👑</footer>
@@ -31,9 +33,21 @@ const library=[
 ['🎥','Show Some Love','Support a fellow streamer in a way that works for you.','show-some-love'],
 ['👑','Pride Connection','Make a new gaming connection through the Den.','pride-connection']];
 const week=(()=>{const d=new Date(),day=(d.getDay()+6)%7;d.setHours(12,0,0,0);d.setDate(d.getDate()-day);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')})();
-let selected=[], completed=[], celebrated=false, client=null, discordId=null, busy=false, loaded=false, loadSequence=0, selectionIds=new Map();
+let verifiedCount=0, selected=[], completed=[], celebrated=false, client=null, discordId=null, busy=false, loaded=false, loadSequence=0, selectionIds=new Map();
 const el=id=>document.getElementById(id);
 const message=t=>el('saveStatus').textContent=t;
+function renderVerified(){el('verifiedProgress').textContent=verifiedCount+' / 5';el('verifiedFill').style.width=Math.min(100,verifiedCount/5*100)+'%';}
+async function loadVerified(){
+ verifiedCount=0;renderVerified();
+ if(!client||!discordId){el('verifiedStatus').textContent='Sign in with Discord to view verified progress.';return;}
+ const id=discordId;el('verifiedStatus').textContent='Loading verified progress…';
+ const {data,error}=await client.rpc('get_my_verified_mission_progress');
+ if(id!==discordId)return;
+ if(error){el('verifiedStatus').textContent='Could not load verified progress: '+error.message;return;}
+ const current=(data||[]).find(row=>row.week_start===week);
+ verifiedCount=Math.min(5,Number(current?.verified_count||0));renderVerified();
+ el('verifiedStatus').textContent=verifiedCount===5?'5 verified missions this week! Royal Achiever eligibility reached; Discord role awards are not connected yet.':verifiedCount+' verified mission'+(verifiedCount===1?'':'s')+' this week. Reports awaiting approval do not count.';
+}
 function render(){
  const count=selected.filter(i=>completed.includes(i)).length;
  el('selectedCount').textContent=selected.length+' / 5 selected';el('progress').textContent=count+' / 5';el('fill').style.width=(count/5*100)+'%';
@@ -44,7 +58,7 @@ function render(){
 }
 function showCelebration(){el('overlay').classList.add('show');el('close').focus()}
 async function loadSelections(){
- const seq=++loadSequence;loaded=false;selected=[];completed=[];selectionIds=new Map();render();
+ const seq=++loadSequence;loaded=false;selected=[];completed=[];selectionIds=new Map();verifiedCount=0;renderVerified();render();
  if(!client||!discordId){message('Sign in with Discord to load and save your weekly missions.');return}
  message('Loading saved missions and reports…');
  const {data:rows,error}=await client.from('weekly_selections').select('id,mission_id').eq('discord_user_id',discordId).eq('week_start',week);
@@ -59,7 +73,7 @@ async function loadSelections(){
    const reported=new Set((reports||[]).map(r=>String(r.selection_id)));
    completed=[...selectionIds].filter(([i,id])=>reported.has(String(id))).map(([i])=>i);
  }
- loaded=true;render();message('Weekly selections and completion reports loaded from your Pride account. Reports are unverified.');
+ loaded=true;render();message('Weekly selections and completion reports loaded from your Pride account. Reports are unverified.');await loadVerified();
 }
 el('missions').addEventListener('click',async e=>{
  const b=e.target.closest('button[data-action]');if(!b||busy||!loaded)return;
@@ -117,13 +131,13 @@ el('preview').onclick=showCelebration;el('close').onclick=()=>el('overlay').clas
       const identity=user.identities?.find(x=>x.provider==='discord');
       const id=identity?.identity_data?.provider_id || user.user_metadata?.provider_id || user.user_metadata?.sub || identity?.identity_data?.sub;
       // Never use identity.id or identity.identity_id: those can be internal UUIDs, not Discord snowflakes.
-      if(!id || !/^\d{15,22}$/.test(String(id))){discordId=null;loaded=false;message('Discord ID unavailable. Please sign out and sign in again.');render();return}
+      if(!id || !/^\d{15,22}$/.test(String(id))){discordId=null;loaded=false;verifiedCount=0;renderVerified();message('Discord ID unavailable. Please sign out and sign in again.');render();return}
       if(discordId!==String(id)){discordId=String(id);await loadSelections()}
 
     }else{
       status.textContent='Sign in with Discord to connect your Pride account.';
       login.hidden=false;logout.hidden=true;
-      if(discordId!==null){discordId=null;loadSelections()}
+      if(discordId!==null){discordId=null;loadSelections();loadVerified()}
 
     }
   }
@@ -137,3 +151,4 @@ el('preview').onclick=showCelebration;el('close').onclick=()=>el('overlay').clas
   await refresh();
 })();
 </script></body></html>
+```
