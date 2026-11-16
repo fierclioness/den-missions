@@ -1,10 +1,11 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin Review | Den Missions 2.0</title><style>
-:root{color-scheme:dark;--gold:#e9bd73;--pink:#b72d82;--muted:#d3bfcf}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 85% 0%,#49213d,transparent 45%),#120c18;color:#f8edf5;font:16px system-ui,Segoe UI,sans-serif}main{max-width:980px;margin:auto;padding:36px 18px 70px}header{text-align:center}.eyebrow{color:var(--gold);font-weight:800;letter-spacing:.18em;font-size:.8rem}h1{font-size:clamp(2rem,5vw,3rem);color:var(--gold)}.panel{background:#211529;border:1px solid #6a3458;border-radius:20px;padding:22px;margin:18px 0}.muted{color:var(--muted)}a{color:var(--gold)}button{border:1px solid #aa6794;background:#462544;color:white;padding:10px 14px;border-radius:9px;font-weight:700;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}.approve{background:#285943;border-color:#6caf91}.reject{background:#692d42;border-color:#ad5b75}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.report{padding:18px;border:1px solid #63425f;border-radius:14px;background:#2c1b33;margin:12px 0}.actions{display:flex;gap:10px;flex-wrap:wrap}.pill{color:var(--gold);font-size:.8rem}#notice{min-height:1.5em}footer{text-align:center;color:var(--gold);margin-top:32px}
+:root{color-scheme:dark;--gold:#e9bd73;--pink:#b72d82;--muted:#d3bfcf}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 85% 0%,#49213d,transparent 45%),#120c18;color:#f8edf5;font:16px system-ui,Segoe UI,sans-serif}main{max-width:980px;margin:auto;padding:36px 18px 70px}header{text-align:center}.eyebrow{color:var(--gold);font-weight:800;letter-spacing:.18em;font-size:.8rem}h1{font-size:clamp(2rem,5vw,3rem);color:var(--gold)}.panel{background:#211529;border:1px solid #6a3458;border-radius:20px;padding:22px;margin:18px 0}.muted{color:var(--muted)}a{color:var(--gold)}button{border:1px solid #aa6794;background:#462544;color:white;padding:10px 14px;border-radius:9px;font-weight:700;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}.approve{background:#285943;border-color:#6caf91}.reject{background:#692d42;border-color:#ad5b75}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.report{padding:18px;border:1px solid #63425f;border-radius:14px;background:#2c1b33;margin:12px 0}.actions{display:flex;gap:10px;flex-wrap:wrap}.pill{color:var(--gold);font-size:.8rem}#notice{min-height:1.5em}.status{padding:5px 10px;border-radius:7px;font-size:.8rem;font-weight:750}.status.approved{background:#285943;color:#e0f6e9}.status.rejected{background:#692d42;color:#ffe2ea}footer{text-align:center;color:var(--gold);margin-top:32px}
 </style></head><body><main><header><div class="eyebrow">THE LIONESS DEN · ADMIN ONLY</div><h1>👑 Mission Review</h1><p class="muted">Review member reports. Only verified missions can qualify for Royal Achiever.</p></header>
 <section class="panel"><div class="top"><div><strong>🔐 Administrator access</strong><p id="authStatus" class="muted" aria-live="polite">Checking your session…</p></div><a href="./index.html">Return to Den Missions</a></div><p class="muted">Sign in on the main Den Missions page first. Access is enforced by Supabase, not by hiding this page.</p></section>
 <section class="panel"><div class="top"><h2>Pending reports <span id="count" class="pill"></span></h2><button id="reload" disabled>Refresh queue</button></div><p id="notice" class="muted" role="status" aria-live="polite"></p><div id="queue"></div></section>
-<section class="panel"><h2>Review rules</h2><p class="muted">Approving creates a verified mission record and an audit entry. Rejecting records the decision without verifying the mission. Decisions cannot be repeated for the same report. Do not approve your own test reports as real evidence. Discord role awards are not connected.</p><p class="muted">Review history will be added after the live approval and rejection workflow is tested.</p></section><footer>Your Squad. Your Vibe. Your Place in the Pride. 👑</footer></main>
+<section class="panel"><div class="top"><h2>📜 Private review history <span id="historyCount" class="pill"></span></h2><button id="historyReload" disabled>Refresh history</button></div><p id="historyNotice" class="muted" role="status" aria-live="polite">Sign in to view history.</p><div id="history"></div></section>
+<section class="panel"><h2>Review rules</h2><p class="muted">Approving creates a verified mission record and an audit entry. Rejecting records the decision without verifying the mission. Decisions cannot be repeated for the same report. Do not approve your own test reports as real evidence. Discord role awards are not connected.</p><p class="muted">Review history is accessible only to authorized administrators. Rejected reports remain in the audit log.</p></section><footer>Your Squad. Your Vibe. Your Place in the Pride. 👑</footer></main>
 <script src="./config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script><script>
 (async()=>{
 'use strict';
@@ -24,9 +25,27 @@ async function review(r,decision){if(busy)return;const verb=decision==='approved
 busy=true;el('reload').disabled=true;draw();notice(`Submitting ${decision} decision…`);
 const {error}=await client.rpc('review_mission_report',{p_report_id:r.report_id,p_decision:decision});busy=false;
 if(error){notice('Review failed: '+error.message);el('reload').disabled=false;draw();return;}
-notice(`Report #${r.report_id} ${decision}. Refreshing queue…`);await load();}
+notice(`Report #${r.report_id} ${decision}. Refreshing queue…`);await load();await loadHistory();}
+async function loadHistory(){
+ const host=el('history'),status=el('historyNotice');el('historyReload').disabled=true;status.textContent='Loading review history…';
+ const {data,error}=await client.rpc('get_mission_review_history');
+ if(error){host.replaceChildren();el('historyCount').textContent='';status.textContent=error.message.includes('Not authorized')?'Access denied.':'Could not load review history: '+error.message;return;}
+ const history=data||[];host.replaceChildren();el('historyCount').textContent=`(${history.length})`;
+ for(const r of history){
+  const card=document.createElement('article');card.className='report';
+  const top=document.createElement('div');top.className='top';
+  const heading=document.createElement('h3');heading.textContent=r.mission_title||'Mission';
+  const tag=document.createElement('span');tag.className='status '+(r.decision==='approved'?'approved':'rejected');tag.textContent=String(r.decision).toUpperCase();top.append(heading,tag);
+  const meta=document.createElement('p');meta.className='muted';meta.textContent=`Report #${r.report_id} · Member ID ${r.discord_user_id} · ${new Date(r.reviewed_at).toLocaleString()}`;
+  const reviewer=document.createElement('p');reviewer.className='muted';reviewer.textContent=`Reviewer ID: ${r.reviewer_id}`;
+  card.append(top,meta,reviewer);host.append(card);
+ }
+ if(!history.length){const p=document.createElement('p');p.className='muted';p.textContent='No reviews recorded yet.';host.append(p);}
+ status.textContent=`History loaded. ${history.length} review${history.length===1?'':'s'}.`;el('historyReload').disabled=false;
+}
+el('historyReload').addEventListener('click',loadHistory);
 el('reload').addEventListener('click',load);
 const {data,error}=await client.auth.getUser();if(error||!data.user){el('authStatus').textContent='Not signed in. Open the main page and sign in with Discord first.';notice('Sign in to review reports.');return;}
-el('authStatus').textContent='Signed in. Checking administrator access…';await load();if(!el('notice').textContent.startsWith('Access denied'))el('authStatus').textContent='Signed in with Discord · Administrator queue available';
+el('authStatus').textContent='Signed in. Checking administrator access…';await load();if(!el('notice').textContent.startsWith('Access denied')){el('authStatus').textContent='Signed in with Discord · Administrator queue available';await loadHistory();}
 })();
 </script></body></html>
