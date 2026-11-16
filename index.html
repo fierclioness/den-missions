@@ -11,7 +11,7 @@
 <body><main>
 <header><div class="eyebrow">THE LIONESS DEN</div><h1>👑 Den Missions 2.0</h1><p>Choose five weekly missions. Play your way. Celebrate your progress.</p></header>
 <section class="panel" id="authPanel" aria-label="Discord sign in"><div class="top" style="flex-wrap:wrap"><div><strong>🔐 Your Pride account</strong><p class="note" id="authStatus" aria-live="polite">Checking Discord sign-in…</p></div><div class="actions"><button class="primary" id="loginDiscord" hidden>Sign in with Discord</button><button id="logoutDiscord" hidden>Sign out</button></div></div><p class="note" id="authNote">Weekly selections save to your account after sign-in. Members can report mission completion. Reports are not verified and do not award Discord roles.</p></section>
-<section class="panel"><div class="top"><strong>Your weekly progress</strong><span class="count" id="progress">0 / 5</span></div><div class="bar" aria-label="Mission progress"><div class="fill" id="fill"></div></div><p class="note">Progress shows your submitted completion reports (unverified). Discord verification and role awards are not connected yet.</p><button id="reset">How reporting works</button></section>
+<section class="panel"><div class="top"><strong>Your weekly progress</strong><span class="count" id="progress">0 / 5</span></div><div class="bar" aria-label="Mission progress"><div class="fill" id="fill"></div></div><p class="note">This counter tracks submitted reports, including rejected reports. Only verified missions count toward Royal Achiever.</p><button id="reset">How reporting works</button></section>
 <section class="panel" aria-label="Verified Royal Achiever progress"><div class="top"><strong>👑 Verified Royal Achiever progress</strong><span class="count" id="verifiedProgress">0 / 5</span></div><div class="bar" aria-label="Verified progress"><div class="fill" id="verifiedFill"></div></div><p class="note" id="verifiedStatus" aria-live="polite">Sign in to view administrator-approved or bot-verified progress. Reports alone do not count.</p></section>
 <section class="panel"><p class="note" id="saveStatus" aria-live="polite">Sign in to save weekly selections.</p><div class="top"><h2>🎮 Choose your missions</h2><span class="count" id="selectedCount">0 / 5 selected</span></div><div class="grid" id="missions"></div></section>
 <section class="panel"><h2>🏆 Your reward</h2><p>The Royal Crown animation is a preview only. Reporting five missions does not earn the Royal Achiever role; verification is required.</p><button class="primary" id="preview">Preview crown celebration ✨</button></section>
@@ -33,7 +33,7 @@ const library=[
 ['🎥','Show Some Love','Support a fellow streamer in a way that works for you.','show-some-love'],
 ['👑','Pride Connection','Make a new gaming connection through the Den.','pride-connection']];
 const week=(()=>{const d=new Date(),day=(d.getDay()+6)%7;d.setHours(12,0,0,0);d.setDate(d.getDate()-day);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')})();
-let verifiedCount=0, selected=[], completed=[], celebrated=false, client=null, discordId=null, busy=false, loaded=false, loadSequence=0, selectionIds=new Map();
+let missionStatuses=new Map(), verifiedCount=0, selected=[], completed=[], celebrated=false, client=null, discordId=null, busy=false, loaded=false, loadSequence=0, selectionIds=new Map();
 const el=id=>document.getElementById(id);
 const message=t=>el('saveStatus').textContent=t;
 function renderVerified(){el('verifiedProgress').textContent=verifiedCount+' / 5';el('verifiedFill').style.width=Math.min(100,verifiedCount/5*100)+'%';}
@@ -48,17 +48,29 @@ async function loadVerified(){
  verifiedCount=Math.min(5,Number(current?.verified_count||0));renderVerified();
  el('verifiedStatus').textContent=verifiedCount===5?'5 verified missions this week! Royal Achiever eligibility reached; Discord role awards are not connected yet.':verifiedCount+' verified mission'+(verifiedCount===1?'':'s')+' this week. Reports awaiting approval do not count.';
 }
+async function loadMissionStatuses(){
+ if(!client||!discordId)return;
+ const currentId=discordId;
+ const {data,error}=await client.rpc('get_my_mission_statuses');
+ if(currentId!==discordId)return;
+ if(error){message('Mission statuses could not load: '+error.message);return;}
+ missionStatuses=new Map((data||[]).map(r=>[String(r.selection_id),r.status]));
+ render();
+}
 function render(){
  const count=selected.filter(i=>completed.includes(i)).length;
  el('selectedCount').textContent=selected.length+' / 5 selected';el('progress').textContent=count+' / 5';el('fill').style.width=(count/5*100)+'%';
  el('missions').innerHTML=library.map(([emoji,title,description],i)=>{
  const chosen=selected.includes(i),done=completed.includes(i);
- return `<article class="mission ${chosen?'selected':''} ${chosen&&done?'done':''}"><div class="pill">${chosen?(done?'✓ REPORTED · UNVERIFIED':'✓ SELECTED'):'AVAILABLE'}</div><h3>${emoji} ${title}</h3><p>${description}</p><div class="actions"><button data-action="select" data-id="${i}" ${busy||!loaded||(!chosen&&selected.length>=5)?'disabled':''}>${chosen?'Remove':'Choose mission'}</button>${chosen?`<button data-action="complete" data-id="${i}" ${busy?'disabled':''}>${done?'Undo report':'Report completed'}</button>`:''}</div></article>`}).join('');
+ const status=chosen?(missionStatuses.get(String(selectionIds.get(i)))||(done?'pending':'not_reported')):'not_reported';
+ const label={verified:'✓ VERIFIED',rejected:'✕ REJECTED',pending:'◷ PENDING REVIEW',not_reported:'✓ SELECTED'}[status];
+ const locked=status==='verified'||status==='rejected';
+ return `<article class="mission ${chosen?'selected':''} ${chosen&&done?'done':''}"><div class="pill">${chosen?label:'AVAILABLE'}</div><h3>${emoji} ${title}</h3><p>${description}</p><div class="actions"><button data-action="select" data-id="${i}" ${busy||!loaded||(!chosen&&selected.length>=5)?'disabled':''}>${chosen?'Remove':'Choose mission'}</button>${chosen?`<button data-action="complete" data-id="${i}" ${busy||locked?'disabled':''}>${locked?(status==='verified'?'Verified':'Rejected'):(done?'Undo report':'Report completed')}</button>`:''}</div></article>`}).join('');
  
 }
 function showCelebration(){el('overlay').classList.add('show');el('close').focus()}
 async function loadSelections(){
- const seq=++loadSequence;loaded=false;selected=[];completed=[];selectionIds=new Map();verifiedCount=0;renderVerified();render();
+ const seq=++loadSequence;loaded=false;selected=[];completed=[];selectionIds=new Map();missionStatuses=new Map();verifiedCount=0;renderVerified();render();
  if(!client||!discordId){message('Sign in with Discord to load and save your weekly missions.');return}
  message('Loading saved missions and reports…');
  const {data:rows,error}=await client.from('weekly_selections').select('id,mission_id').eq('discord_user_id',discordId).eq('week_start',week);
@@ -73,21 +85,21 @@ async function loadSelections(){
    const reported=new Set((reports||[]).map(r=>String(r.selection_id)));
    completed=[...selectionIds].filter(([i,id])=>reported.has(String(id))).map(([i])=>i);
  }
- loaded=true;render();message('Weekly selections and completion reports loaded from your Pride account. Reports are unverified.');await loadVerified();
+ loaded=true;render();message('Weekly selections and completion reports loaded. Review statuses are shown on each mission.');await Promise.all([loadVerified(),loadMissionStatuses()]);
 }
 el('missions').addEventListener('click',async e=>{
  const b=e.target.closest('button[data-action]');if(!b||busy||!loaded)return;
  const i=Number(b.dataset.id);if(!Number.isInteger(i)||i<0||i>=library.length)return;
  if(!client||!discordId)return;
  if(b.dataset.action==='complete'){
-   const selectionId=selectionIds.get(i);if(!selectionId)return;
+   const selectionId=selectionIds.get(i);if(!selectionId||['verified','rejected'].includes(missionStatuses.get(String(selectionId))))return;
    const undo=completed.includes(i);busy=true;render();message(undo?'Removing completion report…':'Saving completion report…');
    const result=undo
      ?await client.from('mission_reports').delete().eq('selection_id',selectionId)
      :await client.from('mission_reports').insert({selection_id:selectionId});
    busy=false;
    if(result.error){message('Report failed: '+result.error.message);render();return}
-   completed=undo?completed.filter(x=>x!==i):[...completed,i];
+   completed=undo?completed.filter(x=>x!==i):[...completed,i];missionStatuses.set(String(selectionId),undo?'not_reported':'pending');
    message(undo?'Completion report removed ✓':'Completion reported ✓ (not verified)');render();return;
  }
  if(b.dataset.action!=='select')return;
@@ -98,8 +110,8 @@ el('missions').addEventListener('click',async e=>{
  else{result=await client.from('weekly_selections').insert({discord_user_id:discordId,week_start:week,mission_id:library[i][3]}).select('id').single();}
  busy=false;
  if(result.error){message('Save failed: '+result.error.message);render();return}
- if(removing){selected=selected.filter(x=>x!==i);completed=completed.filter(x=>x!==i);selectionIds.delete(i)}
- else{selected.push(i);selectionIds.set(i,result.data.id)}
+ if(removing){missionStatuses.delete(String(selectionIds.get(i)));selected=selected.filter(x=>x!==i);completed=completed.filter(x=>x!==i);selectionIds.delete(i)}
+ else{selected.push(i);selectionIds.set(i,result.data.id);missionStatuses.set(String(result.data.id),'not_reported')}
  message('Saved to your Pride account ✓');render();
 });
 el('reset').onclick=()=>{message('Reports are saved to your account. Use Undo report on a mission to remove its report. Reports do not award Discord roles.')};
@@ -137,7 +149,7 @@ el('preview').onclick=showCelebration;el('close').onclick=()=>el('overlay').clas
     }else{
       status.textContent='Sign in with Discord to connect your Pride account.';
       login.hidden=false;logout.hidden=true;
-      if(discordId!==null){discordId=null;loadSelections();loadVerified()}
+      if(discordId!==null){discordId=null;missionStatuses=new Map();loadSelections();loadVerified()}
 
     }
   }
