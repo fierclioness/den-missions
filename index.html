@@ -9,35 +9,73 @@
 </head>
 <body><main>
 <header><div class="eyebrow">THE LIONESS DEN</div><h1>👑 Den Missions 2.0</h1><p>Choose five weekly missions. Play your way. Celebrate your progress.</p></header>
-<section class="panel" id="authPanel" aria-label="Discord sign in"><div class="top" style="flex-wrap:wrap"><div><strong>🔐 Your Pride account</strong><p class="note" id="authStatus" aria-live="polite">Checking Discord sign-in…</p></div><div class="actions"><button class="primary" id="loginDiscord" hidden>Sign in with Discord</button><button id="logoutDiscord" hidden>Sign out</button></div></div><p class="note" id="authNote">Mission check-offs are still demo-only. Signing in does not yet save progress to Supabase or award a Discord role.</p></section>
-<section class="panel"><div class="top"><strong>Your weekly progress</strong><span class="count" id="progress">0 / 5</span></div><div class="bar" aria-label="Mission progress"><div class="fill" id="fill"></div></div><p class="note">Prototype mode: completion is manual for testing. Automatic Discord verification and role awards are not connected yet.</p><button id="reset">Reset demo progress</button></section>
-<section class="panel"><div class="top"><h2>🎮 Choose your missions</h2><span class="count" id="selectedCount">0 / 5 selected</span></div><div class="grid" id="missions"></div></section>
+<section class="panel" id="authPanel" aria-label="Discord sign in"><div class="top" style="flex-wrap:wrap"><div><strong>🔐 Your Pride account</strong><p class="note" id="authStatus" aria-live="polite">Checking Discord sign-in…</p></div><div class="actions"><button class="primary" id="loginDiscord" hidden>Sign in with Discord</button><button id="logoutDiscord" hidden>Sign out</button></div></div><p class="note" id="authNote">Weekly selections save to your account after sign-in. Completion check-offs are still demo-only; no Discord role is awarded.</p></section>
+<section class="panel"><div class="top"><strong>Your weekly progress</strong><span class="count" id="progress">0 / 5</span></div><div class="bar" aria-label="Mission progress"><div class="fill" id="fill"></div></div><p class="note">Completion is manual demo testing only. Automatic Discord verification and role awards are not connected yet.</p><button id="reset">Reset demo check-offs</button></section>
+<section class="panel"><p class="note" id="saveStatus" aria-live="polite">Sign in to save weekly selections.</p><div class="top"><h2>🎮 Choose your missions</h2><span class="count" id="selectedCount">0 / 5 selected</span></div><div class="grid" id="missions"></div></section>
 <section class="panel"><h2>🏆 Your reward</h2><p>Complete all five chosen missions to unlock the Royal Crown celebration. The future 👑 Royal Achiever Discord role is not active yet.</p><button class="primary" id="preview">Preview crown celebration ✨</button></section>
 <footer>Your Squad. Your Vibe. Your Place in the Pride. 👑</footer>
 </main>
 <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="celebrationTitle"><div class="celebration"><div class="confetti">✦ ✨ ✦ ✨ ✦</div><div class="crown">👑</div><h1 id="celebrationTitle">YOU'VE BEEN CROWNED!</h1><p>Five missions complete! The Pride celebrates you!</p><button id="close">Close celebration</button></div></div>
 <script>
 const library=[
-['🎮','Squad Up','Play a game with another Den member.'],
-['🎯','Objective Royalty','Play an objective-based multiplayer mode.'],
-['🕹️','Something Different','Try a game or mode you do not normally play.'],
-['🏆','Personal Best','Work toward a personal gaming goal.'],
-['💬','Break the Ice','Join a conversation in #general.'],
-['👋','Welcome to the Pride','Welcome a new community member.'],
-['🧩','Daily Fun','Participate in Wordle or a Daily Question.'],
-['💗','Good Vibes','Share an encouraging message in the community.'],
-['📸','Clip Worthy','Share a gaming clip in #clips-and-highlights.'],
-['✨','Highlight Hunter','Capture a memorable gaming moment.'],
-['🎥','Show Some Love','Support a fellow streamer in a way that works for you.'],
-['👑','Pride Connection','Make a new gaming connection through the Den.']];
-const week=(()=>{const d=new Date(),day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return [d.getFullYear(),d.getMonth()+1,d.getDate()].join('-')})();
-const key='den-missions-demo-'+week;
-let state={selected:[],completed:[],celebrated:false};try{const saved=JSON.parse(localStorage.getItem(key));if(saved&&Array.isArray(saved.selected)&&Array.isArray(saved.completed))state=saved}catch(e){}
-const save=()=>localStorage.setItem(key,JSON.stringify(state));
-function render(){document.getElementById('selectedCount').textContent=state.selected.length+' / 5 selected';const completed=state.selected.filter(i=>state.completed.includes(i)).length;document.getElementById('progress').textContent=completed+' / 5';document.getElementById('fill').style.width=(completed/5*100)+'%';document.getElementById('missions').innerHTML=library.map(([emoji,title,description],i)=>{const selected=state.selected.includes(i),done=state.completed.includes(i);return `<article class="mission ${selected?'selected':''} ${done?'done':''}"><div class="pill">${selected?(done?'✓ COMPLETE':'✓ SELECTED'):'AVAILABLE'}</div><h3>${emoji} ${title}</h3><p>${description}</p><div class="actions"><button data-action="select" data-id="${i}" ${!selected&&state.selected.length>=5?'disabled':''}>${selected?'Remove':'Choose mission'}</button>${selected?`<button data-action="complete" data-id="${i}">${done?'Undo test':'Mark complete (test)'}</button>`:''}</div></article>`}).join('');if(completed===5&&!state.celebrated){state.celebrated=true;save();showCelebration()}}
-function showCelebration(){document.getElementById('overlay').classList.add('show');document.getElementById('close').focus()}
-document.getElementById('missions').addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(!b)return;const i=Number(b.dataset.id);if(b.dataset.action==='select'){if(state.selected.includes(i)){state.selected=state.selected.filter(x=>x!==i);state.completed=state.completed.filter(x=>x!==i)}else if(state.selected.length<5)state.selected.push(i)}else{state.completed=state.completed.includes(i)?state.completed.filter(x=>x!==i):[...state.completed,i]}if(state.selected.filter(x=>state.completed.includes(x)).length<5)state.celebrated=false;save();render()});
-document.getElementById('reset').onclick=()=>{state={selected:[],completed:[],celebrated:false};save();render()};document.getElementById('preview').onclick=showCelebration;document.getElementById('close').onclick=()=>document.getElementById('overlay').classList.remove('show');document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')e.target.classList.remove('show')});document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('overlay').classList.remove('show')});render();
+['🎮','Squad Up','Play a game with another Den member.','squad-up'],
+['🎯','Objective Royalty','Play an objective-based multiplayer mode.','objective-royalty'],
+['🕹️','Something Different','Try a game or mode you do not normally play.','something-different'],
+['🏆','Personal Best','Work toward a personal gaming goal.','personal-best'],
+['💬','Break the Ice','Join a conversation in #general.','break-the-ice'],
+['👋','Welcome to the Pride','Welcome a new community member.','welcome-to-the-pride'],
+['🧩','Daily Fun','Participate in Wordle or a Daily Question.','daily-fun'],
+['💗','Good Vibes','Share an encouraging message in the community.','good-vibes'],
+['📸','Clip Worthy','Share a gaming clip in #clips-and-highlights.','clip-worthy'],
+['✨','Highlight Hunter','Capture a memorable gaming moment.','highlight-hunter'],
+['🎥','Show Some Love','Support a fellow streamer in a way that works for you.','show-some-love'],
+['👑','Pride Connection','Make a new gaming connection through the Den.','pride-connection']];
+const week=(()=>{const d=new Date(),day=(d.getDay()+6)%7;d.setHours(12,0,0,0);d.setDate(d.getDate()-day);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')})();
+const demoKey='den-missions-demo-checkoffs-'+week;
+let selected=[], completed=[], celebrated=false, client=null, discordId=null, busy=false, loaded=false, loadSequence=0;
+const el=id=>document.getElementById(id);
+const message=t=>el('saveStatus').textContent=t;
+function loadDemo(){try{const x=JSON.parse(localStorage.getItem(demoKey));completed=Array.isArray(x?.completed)?x.completed.filter(Number.isInteger):[];celebrated=!!x?.celebrated}catch{completed=[];celebrated=false}}
+function saveDemo(){localStorage.setItem(demoKey,JSON.stringify({completed,celebrated}))}
+function render(){
+ const count=selected.filter(i=>completed.includes(i)).length;
+ el('selectedCount').textContent=selected.length+' / 5 selected';el('progress').textContent=count+' / 5';el('fill').style.width=(count/5*100)+'%';
+ el('missions').innerHTML=library.map(([emoji,title,description],i)=>{
+ const chosen=selected.includes(i),done=completed.includes(i);
+ return `<article class="mission ${chosen?'selected':''} ${chosen&&done?'done':''}"><div class="pill">${chosen?(done?'✓ DEMO COMPLETE':'✓ SELECTED'):'AVAILABLE'}</div><h3>${emoji} ${title}</h3><p>${description}</p><div class="actions"><button data-action="select" data-id="${i}" ${busy||!loaded||(!chosen&&selected.length>=5)?'disabled':''}>${chosen?'Remove':'Choose mission'}</button>${chosen?`<button data-action="complete" data-id="${i}" ${busy?'disabled':''}>${done?'Undo demo':'Mark complete (demo)'}</button>`:''}</div></article>`}).join('');
+ if(count===5&&!celebrated){celebrated=true;saveDemo();showCelebration()}
+}
+function showCelebration(){el('overlay').classList.add('show');el('close').focus()}
+async function loadSelections(){
+ const seq=++loadSequence;loaded=false;selected=[];completed=[];celebrated=false;render();
+ if(!client||!discordId){message('Sign in with Discord to load and save your weekly missions.');return}
+ message('Loading saved missions…');
+ const {data,error}=await client.from('weekly_selections').select('mission_id').eq('discord_user_id',discordId).eq('week_start',week);
+ if(seq!==loadSequence)return;
+ if(error){message('Could not load saved missions: '+error.message);return}
+ selected=(data||[]).map(r=>library.findIndex(m=>m[3]===r.mission_id)).filter(i=>i>=0);
+ loadDemo();completed=completed.filter(i=>selected.includes(i));loaded=true;render();message('Weekly mission selections are saved to your Pride account. Demo check-offs stay in this browser only.');
+}
+el('missions').addEventListener('click',async e=>{
+ const b=e.target.closest('button[data-action]');if(!b||busy||!loaded)return;
+ const i=Number(b.dataset.id);if(!Number.isInteger(i)||i<0||i>=library.length)return;
+ if(b.dataset.action==='complete'){
+ completed=completed.includes(i)?completed.filter(x=>x!==i):[...completed,i];if(selected.some(x=>!completed.includes(x)))celebrated=false;saveDemo();render();return;
+ }
+ if(b.dataset.action!=='select'||!client||!discordId)return;
+ const removing=selected.includes(i);if(!removing&&selected.length>=5)return;
+ busy=true;render();message('Saving your selection…');
+ let result;
+ if(removing){result=await client.from('weekly_selections').delete().eq('discord_user_id',discordId).eq('week_start',week).eq('mission_id',library[i][3]);}
+ else{result=await client.from('weekly_selections').insert({discord_user_id:discordId,week_start:week,mission_id:library[i][3]});}
+ busy=false;
+ if(result.error){message('Save failed: '+result.error.message);render();return}
+ if(removing){selected=selected.filter(x=>x!==i);completed=completed.filter(x=>x!==i);celebrated=false;saveDemo()}
+ else selected.push(i);
+ message('Saved to your Pride account ✓');render();
+});
+el('reset').onclick=()=>{completed=[];celebrated=false;saveDemo();render();message('Demo check-offs reset. Your saved mission selections were not changed.')};
+el('preview').onclick=showCelebration;el('close').onclick=()=>el('overlay').classList.remove('show');el('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')e.target.classList.remove('show')});document.addEventListener('keydown',e=>{if(e.key==='Escape')el('overlay').classList.remove('show')});render();
 </script><script src="./config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -49,10 +87,9 @@ document.getElementById('reset').onclick=()=>{state={selected:[],completed:[],ce
   const url=cfg.supabaseUrl;
   const key=cfg.supabasePublishableKey;
   if(!url || !key || key.includes('PASTE_') || !window.supabase){
-    status.textContent='Discord sign-in is not configured yet.';
+    status.textContent='Discord sign-in is not configured yet.';message('Sign-in configuration missing.');
     return;
   }
-  let client;
   try { client=window.supabase.createClient(url,key,{auth:{detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}}); }
   catch(e){status.textContent='Sign-in configuration error.';return;}
   async function refresh(){
@@ -63,9 +100,16 @@ document.getElementById('reset').onclick=()=>{state={selected:[],completed:[],ce
       const label=user.user_metadata?.full_name || user.user_metadata?.name || user.user_metadata?.preferred_username || 'Pride member';
       status.textContent='Signed in as '+label+' via Discord.';
       login.hidden=true;logout.hidden=false;
+      const identity=user.identities?.find(x=>x.provider==='discord');
+      const id=identity?.identity_id || identity?.id || user.user_metadata?.provider_id;
+      if(!id){discordId=null;loaded=false;message('Discord ID unavailable. Please sign out and sign in again.');render();return}
+      if(discordId!==String(id)){discordId=String(id);await loadSelections()}
+
     }else{
       status.textContent='Sign in with Discord to connect your Pride account.';
       login.hidden=false;logout.hidden=true;
+      if(discordId!==null){discordId=null;loadSelections()}
+
     }
   }
   login.addEventListener('click',async()=>{
