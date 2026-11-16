@@ -101,8 +101,9 @@ el('preview').onclick=showCelebration;el('close').onclick=()=>el('overlay').clas
       status.textContent='Signed in as '+label+' via Discord.';
       login.hidden=true;logout.hidden=false;
       const identity=user.identities?.find(x=>x.provider==='discord');
-      const id=identity?.identity_id || identity?.id || user.user_metadata?.provider_id;
-      if(!id){discordId=null;loaded=false;message('Discord ID unavailable. Please sign out and sign in again.');render();return}
+      const id=identity?.identity_data?.provider_id || user.user_metadata?.provider_id || user.user_metadata?.sub || identity?.identity_data?.sub;
+      // Never use identity.id or identity.identity_id: those can be internal UUIDs, not Discord snowflakes.
+      if(!id || !/^\d{15,22}$/.test(String(id))){discordId=null;loaded=false;message('Discord ID unavailable. Please sign out and sign in again.');render();return}
       if(discordId!==String(id)){discordId=String(id);await loadSelections()}
 
     }else{
