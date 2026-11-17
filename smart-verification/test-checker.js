@@ -56,3 +56,25 @@ for (const test of tests) {
 }
 
 console.log("All Smart Verification tests passed.");
+
+const { matchSelectedMission } = require("./checker.js");
+
+const selection = {
+  discord_user_id: "123",
+  mission_id: "break-the-ice",
+  selected_at: "2026-11-16T18:00:00Z"
+};
+
+const validMessage = {
+  id: "5",
+  channel_id: "1546529501859815438",
+  author: { id: "123", bot: false },
+  content: "Hey everyone!",
+  timestamp: "2026-11-16T18:05:00Z"
+};
+
+if (matchSelectedMission(validMessage, selection) !== "break-the-ice") {
+  throw new Error("Mission matching failed");
+}
+
+console.log("PASS: Mission selection matching");
