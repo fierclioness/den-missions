@@ -1,9 +1,31 @@
 
-"daily-fun": {
-  "auto_verify": false,
-  "channels": ["daily_question", "wordle"],
-  "minimum_messages": 1,
-  "ignore_bots": true,
-  "require_selection_first": true,
-  "verification": "manual_review_during_beta"
+{
+  "feature": "smart-verification",
+  "mode": "development",
+  "enabled": false,
+  "guild_id": "1546529497925296199",
+  "channels": {
+    "general": "1546529501859815438",
+    "daily_question": "1562480265878577233",
+    "wordle": "1561393990392094790"
+  },
+  "missions": {
+    "break-the-ice": {
+      "auto_verify": false,
+      "channel": "general",
+      "minimum_messages": 1,
+      "minimum_characters": 5,
+      "ignore_bots": true,
+      "ignore_emoji_only": true,
+      "require_selection_first": true
+    },
+    "daily-fun": {
+      "auto_verify": false,
+      "channels": ["daily_question", "wordle"],
+      "minimum_messages": 1,
+      "ignore_bots": true,
+      "require_selection_first": true,
+      "verification": "manual_review_during_beta"
+    }
+  }
 }
