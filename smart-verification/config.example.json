@@ -1,0 +1,16 @@
+
+{
+  "feature": "smart-verification",
+  "mode": "development",
+  "enabled": false,
+  "guild_id": "1546529497925296199",
+  "channels": {
+    "general": "1546529501859815438"
+  },
+  "missions": {
+    "break-the-ice": {
+      "auto_verify": false,
+      "channel": "general"
+    }
+  }
+}
