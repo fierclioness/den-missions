@@ -54,3 +54,44 @@ if (typeof module !== "undefined") {
     meaningfulMessage
   };
 }
+
+function matchSelectedMission(message, selection) {
+  if (!message || !selection) return null;
+
+  if (message.author?.id !== selection.discord_user_id) {
+    return null;
+  }
+
+  const selectedAt = Date.parse(selection.selected_at);
+  const postedAt = Date.parse(message.timestamp);
+
+  if (
+    !Number.isFinite(selectedAt) ||
+    !Number.isFinite(postedAt) ||
+    postedAt < selectedAt
+  ) {
+    return null;
+  }
+
+  const result = evaluateMessage(message);
+
+  if (
+    selection.mission_id === "break-the-ice" &&
+    result.break_the_ice
+  ) {
+    return "break-the-ice";
+  }
+
+  if (
+    selection.mission_id === "daily-fun" &&
+    result.daily_fun
+  ) {
+    return "daily-fun";
+  }
+
+  return null;
+}
+
+if (typeof module !== "undefined") {
+  module.exports.matchSelectedMission = matchSelectedMission;
+}
