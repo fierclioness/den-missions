@@ -78,3 +78,28 @@ if (matchSelectedMission(validMessage, selection) !== "break-the-ice") {
 }
 
 console.log("PASS: Mission selection matching");
+
+const { matchUnverifiedMission } = require("./checker.js");
+
+const verifiedSelection = {
+  id: 100,
+  discord_user_id: "123",
+  mission_id: "break-the-ice",
+  selected_at: "2026-11-16T18:00:00Z"
+};
+
+const existingProgress = {
+  selection_id: 100
+};
+
+if (
+  matchUnverifiedMission(
+    validMessage,
+    verifiedSelection,
+    existingProgress
+  ) !== null
+) {
+  throw new Error("Duplicate verification was not blocked");
+}
+
+console.log("PASS: Duplicate verification blocked");
