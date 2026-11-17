@@ -12,7 +12,12 @@
   "missions": {
     "break-the-ice": {
       "auto_verify": false,
-      "channel": "general"
+      "channel": "general",
+      "minimum_messages": 1,
+      "minimum_characters": 5,
+      "ignore_bots": true,
+      "ignore_emoji_only": true,
+      "require_selection_first": true
     },
     "daily-fun": {
       "auto_verify": false,
