@@ -103,3 +103,23 @@ if (
 }
 
 console.log("PASS: Duplicate verification blocked");
+
+const earlierMessage = {
+  ...validMessage,
+  timestamp: "2026-11-16T17:59:00Z"
+};
+
+if (matchSelectedMission(earlierMessage, selection) !== null) {
+  throw new Error("Activity before selection was accepted");
+}
+
+const differentMemberMessage = {
+  ...validMessage,
+  author: { id: "999", bot: false }
+};
+
+if (matchSelectedMission(differentMemberMessage, selection) !== null) {
+  throw new Error("Another member's activity was accepted");
+}
+
+console.log("PASS: Timestamp and member safeguards");
