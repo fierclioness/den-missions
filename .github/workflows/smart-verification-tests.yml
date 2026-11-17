@@ -2,6 +2,9 @@
 name: Smart Verification Tests
 
 on:
+  push:
+    branches:
+      - smart-verification-beta
   workflow_dispatch:
 
 permissions:
