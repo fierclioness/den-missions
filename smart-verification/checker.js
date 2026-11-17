@@ -95,3 +95,16 @@ function matchSelectedMission(message, selection) {
 if (typeof module !== "undefined") {
   module.exports.matchSelectedMission = matchSelectedMission;
 }
+
+function matchUnverifiedMission(message, selection, progress) {
+  // Never match a mission that's already verified.
+  if (progress?.selection_id === selection?.id) {
+    return null;
+  }
+
+  return matchSelectedMission(message, selection);
+}
+
+if (typeof module !== "undefined") {
+  module.exports.matchUnverifiedMission = matchUnverifiedMission;
+}
