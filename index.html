@@ -9,8 +9,8 @@
 </style>
 </head>
 <body><main>
-<header><div class="eyebrow">THE LIONESS DEN</div><h1>👑 Den Missions 2.1</h1><p>Choose five weekly missions. Play your way. Celebrate your progress.</p></header>
-<section class="panel" id="authPanel" aria-label="Discord sign in"><div class="top" style="flex-wrap:wrap"><div><strong>🔐 Your Pride account</strong><p class="note" id="authStatus" aria-live="polite">Checking Discord sign-in…</p></div><div class="actions"><button class="primary" id="loginDiscord" hidden>Sign in with Discord</button><button id="logoutDiscord" hidden>Sign out</button></div></div><p class="note" id="authNote">Sign in to save up to five weekly missions. Break the Ice and Daily Fun can verify automatically from qualifying Discord activity; other missions need a completion report and admin approval.</p></section>
+<header><div class="eyebrow">THE LIONESS DEN</div><h1>👑 Den Missions 2.1</h1><p>Choose up to five missions each week. The new week begins Monday at midnight Eastern Time.</p></header>
+<section class="panel" id="authPanel" aria-label="Discord sign in"><div class="top" style="flex-wrap:wrap"><div><strong>🔐 Your Pride account</strong><p class="note" id="authStatus" aria-live="polite">Checking Discord sign-in…</p></div><div class="actions"><button class="primary" id="loginDiscord" hidden>Sign in with Discord</button><button id="logoutDiscord" hidden>Sign out</button></div></div><p class="note" id="authNote">Sign in to save up to five weekly missions. Break the Ice and Daily Fun can verify automatically after qualifying Discord activity. For other missions, submit a completion report for admin approval.</p></section>
 <section class="panel"><div class="top"><strong>📝 Completion reports submitted</strong><span class="count" id="progress">0 / 5</span></div><div class="bar" aria-label="Mission progress"><div class="fill" id="fill"></div></div><p class="note">This counts reports you have submitted this week, including reports later rejected. Only verified missions count toward Royal Achiever.</p><button id="reset">How reporting works</button></section>
 <section class="panel" aria-label="Verified Royal Achiever progress"><div class="top"><strong>👑 Verified Royal Achiever progress</strong><span class="count" id="verifiedProgress">0 / 5</span></div><div class="bar" aria-label="Verified progress"><div class="fill" id="verifiedFill"></div></div><p class="note" id="verifiedStatus" aria-live="polite">Sign in to view administrator-approved or bot-verified progress. Reports alone do not count.</p></section>
 <section class="panel"><p class="note" id="saveStatus" aria-live="polite">Sign in to save weekly selections.</p><div class="top"><h2>🎮 Choose your missions</h2><span class="count" id="selectedCount">0 / 5 selected</span></div><div class="grid" id="missions"></div></section>
@@ -80,7 +80,20 @@ function render(){
  return `<article class="mission ${chosen?'selected':''} ${chosen&&done?'done':''}"><div class="pill">${chosen?label:'AVAILABLE'}</div><h3>${emoji} ${title}</h3><p>${description}</p><div class="actions"><button data-action="select" data-id="${i}" ${busy||!loaded||locked||(!chosen&&selected.length>=5)?'disabled':''}>${chosen?(locked?'Locked · reviewed':'Remove'):'Choose mission'}</button>${chosen?`<button data-action="complete" data-id="${i}" ${busy||locked?'disabled':''}>${locked?(status==='verified'?'Verified':'Rejected'):(done?'Undo report':'Report completed')}</button>`:''}</div></article>`}).join('');
  
 }
-function showCelebration(preview=true){el('celebrationMessage').textContent=preview?'Preview only: earn five verified weekly missions to receive the Royal Achiever Discord role.':'You completed five verified missions! 👑 Your Royal Achiever Discord role is being processed automatically.';el('overlay').classList.add('show');el('close').focus()}
+let celebrationReturnFocus;
+function showCelebration(preview=true){
+ const overlay=el('overlay');
+ if(!overlay.classList.contains('show')) celebrationReturnFocus=document.activeElement;
+ el('celebrationMessage').textContent=preview?'Preview only: earn five verified weekly missions to receive the Royal Achiever Discord role.':'You completed five verified missions! 👑 Your Royal Achiever Discord role is being processed automatically.';
+ overlay.classList.add('show');
+ el('close').focus();
+}
+function closeCelebration(){
+ el('overlay').classList.remove('show');
+ const previous=celebrationReturnFocus;
+ (previous&&previous!==document.body&&previous.isConnected&&!previous.disabled?previous:el('preview')).focus();
+ celebrationReturnFocus=null;
+}
 async function loadSelections(){
  const seq=++loadSequence;loaded=false;selected=[];completed=[];selectionIds=new Map();missionStatuses=new Map();verifiedCount=0;renderVerified();render();
  if(!client||!discordId){message('Sign in with Discord to load and save your weekly missions.');return}
@@ -128,7 +141,15 @@ el('missions').addEventListener('click',async e=>{
  message('Saved to your Pride account ✓');render();
 });
 el('reset').onclick=()=>{message('Reports are saved to your account. Use Undo report on a mission to remove its report. Only verified missions count toward Royal Achiever; submitting a report alone does not award the role.')};
-el('preview').onclick=()=>showCelebration(true);el('close').onclick=()=>el('overlay').classList.remove('show');el('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')e.target.classList.remove('show')});document.addEventListener('keydown',e=>{if(e.key==='Escape')el('overlay').classList.remove('show')});render();
+el('preview').onclick=()=>showCelebration(true);
+el('close').onclick=closeCelebration;
+el('overlay').addEventListener('click',e=>{if(e.target===el('overlay'))closeCelebration();});
+document.addEventListener('keydown',e=>{
+ if(!el('overlay').classList.contains('show'))return;
+ if(e.key==='Escape'){e.preventDefault();closeCelebration();}
+ if(e.key==='Tab'){e.preventDefault();el('close').focus();}
+});
+render();
 </script><script src="./config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
