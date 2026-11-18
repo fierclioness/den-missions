@@ -1,0 +1,31 @@
+name: Eastern week boundary tests
+
+on:
+  pull_request:
+    paths:
+      - 'verification/eastern-week.mjs'
+      - 'verification/eastern-week.test.mjs'
+      - '.github/workflows/eastern-week-tests.yml'
+  push:
+    branches:
+      - 'fix/verification-eastern-boundaries-2026-11-18'
+    paths:
+      - 'verification/eastern-week.mjs'
+      - 'verification/eastern-week.test.mjs'
+      - '.github/workflows/eastern-week-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out review branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run Eastern Time and DST tests
+        run: node --test verification/eastern-week.test.mjs
