@@ -41,9 +41,18 @@ function communityWeekStart(now=new Date()){
  return date.toISOString().slice(0,10);
 }
 const week=communityWeekStart();
+function refreshWeekIfNeeded(){
+ if(communityWeekStart()!==week){
+   window.location.reload();
+   return true;
+ }
+ return false;
+}
 document.addEventListener('visibilitychange',()=>{
- if(!document.hidden && communityWeekStart()!==week) window.location.reload();
+ if(!document.hidden) refreshWeekIfNeeded();
 });
+window.addEventListener('focus',refreshWeekIfNeeded);
+window.addEventListener('pageshow',refreshWeekIfNeeded);
 let missionStatuses=new Map(), verifiedCount=0, selected=[], completed=[], celebrated=false, client=null, discordId=null, busy=false, loaded=false, loadSequence=0, selectionIds=new Map();
 const el=id=>document.getElementById(id);
 const message=t=>el('saveStatus').textContent=t;
@@ -114,6 +123,7 @@ async function loadSelections(){
 }
 el('missions').addEventListener('click',async e=>{
  const b=e.target.closest('button[data-action]');if(!b||busy||!loaded)return;
+ if(refreshWeekIfNeeded()){message('New mission week started. Refreshing your selections…');return;}
  const i=Number(b.dataset.id);if(!Number.isInteger(i)||i<0||i>=library.length)return;
  if(!client||!discordId)return;
  if(b.dataset.action==='complete'){
