@@ -32,7 +32,15 @@ const library=[
 ['✨','Highlight Hunter','Capture a memorable gaming moment.','highlight-hunter'],
 ['🎥','Show Some Love','Support a fellow streamer in a way that works for you.','show-some-love'],
 ['👑','Pride Connection','Make a new gaming connection through the Den.','pride-connection']];
-const week=(()=>{const d=new Date(),day=(d.getDay()+6)%7;d.setHours(12,0,0,0);d.setDate(d.getDate()-day);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')})();
+// Use one consistent community week (America/New_York) on every device.
+function communityWeekStart(now=new Date()){
+ const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now).filter(p=>p.type!=='literal').map(p=>[p.type,Number(p.value)]));
+ const date=new Date(Date.UTC(parts.year,parts.month-1,parts.day));
+ const daysSinceMonday=(date.getUTCDay()+6)%7;
+ date.setUTCDate(date.getUTCDate()-daysSinceMonday);
+ return date.toISOString().slice(0,10);
+}
+const week=communityWeekStart();
 let missionStatuses=new Map(), verifiedCount=0, selected=[], completed=[], celebrated=false, client=null, discordId=null, busy=false, loaded=false, loadSequence=0, selectionIds=new Map();
 const el=id=>document.getElementById(id);
 const message=t=>el('saveStatus').textContent=t;
