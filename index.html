@@ -41,6 +41,9 @@ function communityWeekStart(now=new Date()){
  return date.toISOString().slice(0,10);
 }
 const week=communityWeekStart();
+document.addEventListener('visibilitychange',()=>{
+ if(!document.hidden && communityWeekStart()!==week) window.location.reload();
+});
 let missionStatuses=new Map(), verifiedCount=0, selected=[], completed=[], celebrated=false, client=null, discordId=null, busy=false, loaded=false, loadSequence=0, selectionIds=new Map();
 const el=id=>document.getElementById(id);
 const message=t=>el('saveStatus').textContent=t;
