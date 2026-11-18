@@ -15,7 +15,7 @@ Private admin review page: https://fierclioness.github.io/den-missions/admin.htm
 
 **Progress bars:** Completion reports submitted = reports filed (not proof of approval); Verified Royal Achiever progress = approved or bot-verified missions.
 
-**Weekly schedule:** Selections are grouped by Monday-starting weeks. The current website calculates the week using the visitor's local calendar; verify time-zone behavior before an international launch.
+**Weekly schedule:** Selections are grouped by **Monday-starting weeks in America/New_York (Eastern Time)**, consistently across desktop and mobile. Opening an already-running tab after a week change refreshes the page. Confirm a real Monday rollover when it occurs.
 
 ## Admin review
 
@@ -40,7 +40,8 @@ Open the private admin page while signed in. Review pending reports against actu
 - [x] Automatic Royal Achiever achievement creation and Discord role award tested
 - [x] Member-facing copy and crown celebration updated
 - [ ] Confirm live GitHub Pages deployment and test sign-in on mobile and desktop
-- [ ] Confirm week rollover behavior in the desired server timezone
+- [x] Align week boundaries to America/New_York and refresh stale tabs on return
+- [ ] Observe an actual Monday rollover after launch
 - [ ] Approve and post the Discord launch announcement
 
 ## Member launch announcement (draft)
